@@ -1,4 +1,5 @@
 from threading import Thread
+import time
 
 import rclpy
 from action_msgs.msg import GoalStatus
@@ -91,7 +92,7 @@ class GoalHandle(Thread):
         feedback_callback -- a callback to call with the feedback while the goal is executing if opted.
         """
         Thread.__init__(self)
-        self.daemon = True
+        self.daemon = False
         self.goal_msg = goal_msg
         self.success = success_callback
         self.error = error_callback
@@ -129,24 +130,38 @@ class GoalHandle(Thread):
             raise Exception("Action Server Not Available")
 
         inst = get_action_goal_instance(self.client.action_type)
+            #self.client.node_handle.get_logger().info("1"+self.client)
         # Populate the goal instance with the provided goal args
         self.args_to_action_goal_instance(inst, goal_msg)
+            #self.client.noad_handle.get_logger().info("2"+goal_msg)
 
         # send the goal and wait for the goal future to be accepted
         send_goal_future = self.client.action_client.send_goal_async(inst, self.feedback)
-        rclpy.spin_until_future_complete(self.client.node_handle, send_goal_future)
+        
+        self.client.node_handle.get_logger().info(
+            f"{send_goal_future}"
+        )
+        
+        #rclpy.spin_until_future_complete(self.client.node_handle, send_goal_future)
         goal_handle = send_goal_future.result()
         if not goal_handle.accepted:
             raise Exception("Action Goal was rejected!")
         self.client.node_handle.get_logger().info(
-            f"Goal is accepted by the action server: {self.client.action_name}."
+            f"Goal is accepted by the action server: {self.client.action_name}.{goal_handle}"
         )
-
+        # time.sleep(3)
         # get the result
-        result = goal_handle.get_result()
+        # self.client.node_handle.get_logger().info(goal_handle.getCommState())
+        
+        #self.client.node_handle.get_logger().warn(goal_handle)
+
+        result = goal_handle.get_result_async()
+        self.client.node_handle.get_logger().info("result: " + result)
 
         # return the result of the goal if succeeded.
         status = result.status
+        #self.client.node_handle.get_logger().warn("Client ist destroyed")
+        #self.client.destroy()
         if status == GoalStatus.STATUS_SUCCEEDED:
             # Turn the response into JSON and pass to the callback
             json_response = extract_values(result.result)

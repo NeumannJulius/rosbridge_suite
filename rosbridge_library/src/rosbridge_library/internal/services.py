@@ -66,7 +66,7 @@ class ServiceCaller(Thread):
         node_handle      -- a ROS2 node handle to call services.
         """
         Thread.__init__(self)
-        self.daemon = True
+        self.daemon = False
         self.service = service
         self.args = args
         self.success = success_callback

@@ -43,7 +43,7 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import StreamClosedError
 from tornado.websocket import WebSocketClosedError, WebSocketHandler
 
-_io_loop = IOLoop.instance()
+_io_loop = IOLoop.current()
 
 
 def _log_exception():
@@ -135,6 +135,8 @@ class RosbridgeWebSocket(WebSocketHandler):
             "unregister_timeout": cls.unregister_timeout,
             "bson_only_mode": cls.bson_only_mode,
         }
+        cls.node_handle.get_logger().warn("Opened websocket")
+
         try:
             self.client_id = uuid.uuid4()
             self.protocol = RosbridgeProtocol(
@@ -158,9 +160,14 @@ class RosbridgeWebSocket(WebSocketHandler):
 
     @log_exceptions
     def on_message(self, message):
+        cls = self.__class__
+        
         if isinstance(message, bytes):
             message = message.decode("utf-8")
+        cls.node_handle.get_logger().warn("Received Message:" + message)
+
         self.incoming_queue.push(message)
+        
 
     @log_exceptions
     def on_close(self):
