@@ -28,8 +28,10 @@ class ActionClientRequests(Capability):
         protocol.register_operation("send_goal", self.send_goal)
         protocol.register_operation("destroy_client", self.destroy_client)
         protocol.register_operation("cancel_goal", self.cancel_goal)
+        protocol.register_operation("cancel_single_goal", self.cancel_single_goal)
 
         self._actionclients = {}
+        self._goalHandles = {}
 
     def send_goal(self, msg):
         # Check the args
@@ -75,7 +77,12 @@ class ActionClientRequests(Capability):
                 action_name, action_type, self.protocol.node_handle
             )
 
-        GoalHandle(self._actionclients[action_name], goal_msg, s_cb, e_cb, f_cb).start()
+        goalHandle = GoalHandle(self._actionclients[action_name], goal_msg, s_cb, e_cb, f_cb)
+        
+        self._goalHandles[client_id] = goalHandle
+        #self.protocol.log("info", f"{client_id}")
+        
+        goalHandle.start()
 
     def _success(self, cid, action_name, message):
         outgoing_message = {
@@ -150,7 +157,7 @@ class ActionClientRequests(Capability):
         if len(self._actionclients) == 0:
             self._actionclients.clear()
 
-        self.protocol.log("info", "Destroyed Action Client %s" % action_name)
+        self.protocol.log("info", "Destroyed Action Client %s" % action_name) 
 
     def cancel_goal(self, msg):
         self.basic_type_check(msg, self.cancel_goal_msg_fields)
@@ -173,7 +180,40 @@ class ActionClientRequests(Capability):
             outgoing_message["id"] = cid
         self.protocol.send(outgoing_message)
 
-        self.protocol.log("info", "cancelled goals of %s" % action_name)
+                
+        self.protocol.log("info", "cancelled all goals of %s" % (action_name))
+        
+        
+    def cancel_single_goal(self,msg):
+        self.basic_type_check(msg, self.cancel_goal_msg_fields)
+        action_name = msg.get("action_name")
+        cid = msg.get("id", None)
+
+        if action_name not in self._actionclients:
+            self.protocol.log("info", "action client %s not available" % action_name)
+            return
+
+        goal_to_cancel = self._goalHandles[cid]
+        
+        result = self._actionclients[action_name].cancel_single_goal_call(goal_to_cancel.uuid)
+        # result = self._actionclients[action_name].cancel_goal_call()
+
+        outgoing_message = {
+            "op": "action_response",
+            "response_type": "cancel",
+            "name": action_name,
+            "values": result,
+        }
+        if cid is not None:
+            outgoing_message["id"] = cid
+        self.protocol.send(outgoing_message)
+
+        self.protocol.log("info", "cancelled goal of %s with uuid:%s"% (action_name,goal_to_cancel.uuid))
+        
+        # self.protocol.log("info", "cancelled goals of %s by using %s and uuid:%s" % (action_name,cid,goal_to_cancel.uuid))
+        
+        
+    
 
     def finish(self):
         for clients in self._actionclients.values():
@@ -182,3 +222,5 @@ class ActionClientRequests(Capability):
         self.protocol.unregister_operation("send_goal")
         self.protocol.unregister_operation("destroy_client")
         self.protocol.unregister_operation("cancel_goal")
+        self.protocol.unregister_operation("cancel_single_goal")
+

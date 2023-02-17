@@ -62,6 +62,29 @@ class ActionClientHandle:
             raise Exception(result)
 
         return json_response
+    
+    
+    def cancel_single_goal_call(self,uuid):
+        """
+        Sends a cancel goal service call.
+        It cancels the given Goal of the action server by providing its id and zeros too stamp.
+        """
+        msg = CancelGoal.Request()
+        msg.goal_info.goal_id = uuid
+        msg.goal_info.stamp.nanosec = 0
+        msg.goal_info.stamp.sec = 0
+
+        # create a call with the cancel request
+        result = self.cancel_client.call(msg)
+        if result is not None:
+            # Turn the response into JSON and pass to the callback
+            json_response = extract_values(result)
+        else:
+            raise Exception(result)
+
+        return json_response
+    
+    
 
     def unregister(self):
         # cancel goals if any before destroy the client
@@ -98,6 +121,7 @@ class GoalHandle(Thread):
         self.error = error_callback
         self.feedback = feedback_callback
         self.client = action_client
+        self.uuid = UUID(uuid=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
     def run(self):
         try:
@@ -121,9 +145,10 @@ class GoalHandle(Thread):
 
         # Populate the provided instance, propagating any exceptions
         populate_instance(msg, inst)
+        
 
     def start_goal(self, goal_msg):
-        if not self.client.action_client.wait_for_server(timeout_sec=10.0):
+        if not self.client.action_client.wait_for_server(timeout_sec=2.0):
             self.client.node_handle.get_logger().warning(
                 f" Timeout: Action Server for Client: {self.client.action_name} not available. Goal is ignored "
             )
@@ -147,16 +172,20 @@ class GoalHandle(Thread):
         if not goal_handle.accepted:
             raise Exception("Action Goal was rejected!")
         self.client.node_handle.get_logger().info(
-            f"Goal is accepted by the action server: {self.client.action_name}.{goal_handle}"
+            f"Goal is accepted by the action server: {self.client.action_name}  /./  {goal_handle.goal_id}"
         )
-        # time.sleep(3)
+        self.uuid = goal_handle.goal_id
+        
+        
+        # time.sleep(12)
         # get the result
         # self.client.node_handle.get_logger().info(goal_handle.getCommState())
         
         #self.client.node_handle.get_logger().warn(goal_handle)
-
-        result = goal_handle.get_result_async()
-        self.client.node_handle.get_logger().info("result: " + result)
+ 
+        
+        result = goal_handle.get_result()
+        # self.client.node_handle.get_logger().info("result: " + result)
 
         # return the result of the goal if succeeded.
         status = result.status
