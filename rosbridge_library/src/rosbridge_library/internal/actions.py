@@ -153,7 +153,7 @@ class GoalHandle(Thread):
                 f" Timeout: Action Server for Client: {self.client.action_name} not available. Goal is ignored "
             )
             raise Exception("Action Server Not Available")
-
+        
         inst = get_action_goal_instance(self.client.action_type)
             #self.client.node_handle.get_logger().info("1"+self.client)
         # Populate the goal instance with the provided goal args
@@ -168,7 +168,14 @@ class GoalHandle(Thread):
         )
         
         #rclpy.spin_until_future_complete(self.client.node_handle, send_goal_future)
+        
+        
         goal_handle = send_goal_future.result()
+        # waiting till result is not None for queueing more actions than free exucutor threads 
+        while type(goal_handle) == type(None):
+            time.sleep(0.01)
+            goal_handle = send_goal_future.result()
+
         if not goal_handle.accepted:
             raise Exception("Action Goal was rejected!")
         self.client.node_handle.get_logger().info(
