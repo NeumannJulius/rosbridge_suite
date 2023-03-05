@@ -170,28 +170,28 @@ class GoalHandle(Thread):
         #rclpy.spin_until_future_complete(self.client.node_handle, send_goal_future)
         
         
-        goal_handle = send_goal_future.result()
+        self.goal_handle = send_goal_future.result()
         # waiting till result is not None for queueing more actions than free exucutor threads 
-        while type(goal_handle) == type(None):
+        while type(self.goal_handle) == type(None):
             time.sleep(0.01)
-            goal_handle = send_goal_future.result()
+            self.goal_handle = send_goal_future.result()
 
-        if not goal_handle.accepted:
+        if not self.goal_handle.accepted:
             raise Exception("Action Goal was rejected!")
         self.client.node_handle.get_logger().info(
-            f"Goal is accepted by the action server: {self.client.action_name}  /./  {goal_handle.goal_id}"
+            f"Goal is accepted by the action server: {self.client.action_name}  /./  {self.goal_handle.goal_id}"
         )
-        self.uuid = goal_handle.goal_id
+        self.uuid = self.goal_handle.goal_id
         
         
         # time.sleep(12)
         # get the result
-        # self.client.node_handle.get_logger().info(goal_handle.getCommState())
+        # self.client.node_handle.get_logger().info(self.goal_handle.getCommState())
         
-        #self.client.node_handle.get_logger().warn(goal_handle)
+        #self.client.node_handle.get_logger().warn(self.goal_handle)
  
         
-        result = goal_handle.get_result()
+        result = self.goal_handle.get_result()
         # self.client.node_handle.get_logger().info("result: " + result)
 
         # return the result of the goal if succeeded.

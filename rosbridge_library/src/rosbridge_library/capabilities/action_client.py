@@ -1,9 +1,15 @@
 import fnmatch
 from functools import partial
+import time
 
 from rosbridge_library.capability import Capability
 from rosbridge_library.internal.actions import ActionClientHandle, GoalHandle
 from rosbridge_library.internal.message_conversion import extract_values
+
+from unique_identifier_msgs.msg import UUID
+
+from rclpy import task
+
 
 
 class ActionClientRequests(Capability):
@@ -195,14 +201,36 @@ class ActionClientRequests(Capability):
 
         goal_to_cancel = self._goalHandles[cid]
         
-        result = self._actionclients[action_name].cancel_single_goal_call(goal_to_cancel.uuid)
+        
+        while True:
+            if(goal_to_cancel.uuid == UUID(uuid=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])):
+                time.sleep(0.01)
+            else:
+                break
+        
+        
+        result_future = goal_to_cancel.goal_handle.cancel_goal_async()
+        
+        
+        #time.sleep(1)
+        result = result_future.result()
+        
+        # while isinstance(result,task.Future):
+            # time.sleep(0.1)
+            
+        while type(result) == type(None):
+            time.sleep(0.01)
+            result = result_future.result()
+        
+        
+        # result = self._actionclients[action_name].cancel_single_goal_call(goal_to_cancel.uuid)
         # result = self._actionclients[action_name].cancel_goal_call()
 
         outgoing_message = {
             "op": "action_response",
             "response_type": "cancel",
             "name": action_name,
-            "values": result,
+            "values": result.return_code,
         }
         if cid is not None:
             outgoing_message["id"] = cid

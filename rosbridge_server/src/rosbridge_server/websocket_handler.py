@@ -135,7 +135,7 @@ class RosbridgeWebSocket(WebSocketHandler):
             "unregister_timeout": cls.unregister_timeout,
             "bson_only_mode": cls.bson_only_mode,
         }
-        cls.node_handle.get_logger().warn("Opened websocket")
+        cls.node_handle.get_logger().info("Opened websocket")
 
         try:
             self.client_id = uuid.uuid4()
@@ -164,7 +164,7 @@ class RosbridgeWebSocket(WebSocketHandler):
         
         if isinstance(message, bytes):
             message = message.decode("utf-8")
-        cls.node_handle.get_logger().warn("Received Message:" + message)
+        cls.node_handle.get_logger().info("Received Message:" + message)
 
         self.incoming_queue.push(message)
         
